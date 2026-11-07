@@ -20,9 +20,13 @@ terraform {
 # PROXMOX_VE_API_TOKEN, PROXMOX_VE_INSECURE) are injected from the Kubernetes
 # Secret that has the label terraform.vcluster.com/provider matching the
 # NodeProvider name. No endpoint or credentials are hardcoded here.
+# SSH is required by the provider to upload cloud-init snippet files to the
+# Proxmox node (the REST API cannot upload snippets). Credentials come from the
+# PROXMOX_VE_SSH_USERNAME / PROXMOX_VE_SSH_PASSWORD env vars injected from the
+# Kubernetes secret. agent is disabled since the loft pod has no SSH agent.
 provider "proxmox" {
   ssh {
-    agent = true
+    agent = false
   }
 }
 
