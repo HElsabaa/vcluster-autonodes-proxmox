@@ -13,10 +13,8 @@ terraform {
 }
 
 # vCluster Platform injects node details into var.vcluster automatically at
-# runtime. You do not define this externally — it is provided by the Platform.
-variable "vcluster" {
-  type = any
-}
+# runtime via a generated __vcluster__variables.tf file. We must NOT declare
+# the "vcluster" variable here, or OpenTofu errors with a duplicate declaration.
 
 # Credentials (PROXMOX_VE_ENDPOINT, PROXMOX_VE_USERNAME, PROXMOX_VE_PASSWORD or
 # PROXMOX_VE_API_TOKEN, PROXMOX_VE_INSECURE) are injected from the Kubernetes
