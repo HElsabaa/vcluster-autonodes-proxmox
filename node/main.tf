@@ -58,8 +58,26 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
         users:
         - {name: ubuntu, password: ubuntu, type: text}
       ssh_pwauth: true
+      write_files:
+      - path: /root/bundle-join.sh
+        permissions: "0755"
+        content: |
+          #!/bin/sh
+          # Join using the Kubernetes bundle served by the vCluster control plane instead of GitHub.
+          # The join script already knows that URL (REPOSITORY_URL) and only falls back to it when
+          # github.com is unreachable. Here we fetch it ourselves and pass --bundle-path.
+          set -u
+          R=$(grep -m1 '^REPOSITORY_URL=' /root/join.sh | cut -d'"' -f2)
+          V=$(grep -m1 '^KUBERNETES_VERSION=' /root/join.sh | cut -d'"' -f2)
+          A=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+          echo "Fetching Kubernetes bundle $V ($A) from the vCluster control plane..."
+          if curl -fsSLk --retry 5 --retry-delay 3 --max-time 300 -o /root/k8s-bundle.tar.gz "$R/$V/kubernetes-$V-$A.tar.gz"; then
+            exec sh /root/join.sh --force-join --bundle-path /root/k8s-bundle.tar.gz
+          fi
+          echo "Bundle download failed, falling back to the default join (GitHub)..."
+          exec sh /root/join.sh --force-join
 
-      ${replace(var.vcluster.userData, "#cloud-config", "")}
+      ${replace(replace(var.vcluster.userData, "#cloud-config", ""), "| sh -s -- --force-join", "-o /root/join.sh && /root/bundle-join.sh")}
     EOT
     # Note: replace() strips the "#cloud-config" header from the Platform-injected
     # userData so the two cloud-config documents can be merged inline. This works
